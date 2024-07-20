@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
 import {EIP155Signer} from "@oasisprotocol/sapphire-contracts/contracts/EIP155Signer.sol";
-import {OasisReward} from "./OasisReward.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+// import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Quiz {
-    
+contract QuizNFT is ERC721 {
     string constant errInvalidCoupon = "Invalid coupon";
     string constant errCouponExists = "Coupon already exists";
     string constant errWrongAnswer = "Wrong answer";
@@ -14,7 +14,7 @@ contract Quiz {
     string constant errForbidden = "Access forbidden by contract policy";
     string constant errPayoutFailed = "Payout failed";
 
-    uint256 public constant COUPON_VALID =  type(uint256).max-1;
+    uint256 public constant COUPON_VALID = type(uint256).max-1;
     uint256 public constant COUPON_REMOVED = type(uint256).max-2;
 
     struct QuizQuestion {
@@ -44,12 +44,6 @@ contract Quiz {
     address _owner;
     // Encryption key for encrypting payout certificates.
     bytes32 _key;
-    // Quiz ID for generating NFT images
-    uint32 _quizID;
-    // Base64 svg image for this quiz instance
-    string _svgImage;
-    // NFT contract address
-    address _nftAddress;
     // List of questions.
     QuizQuestion[] _questions;
     // Total number of choices. Used for generating the permutation vector.
@@ -62,6 +56,10 @@ contract Quiz {
     uint _reward;
     // Keypair used for gasless transactions (optional).
     EthereumKeypair _kp;
+    // NFT token ID counter
+    uint256 private _tokenIdCounter;
+    mapping(uint256 => string) private _tokenURIs;
+
 
     modifier onlyOwner {
         require(msg.sender == _owner);
@@ -73,7 +71,7 @@ contract Quiz {
         _;
     }
 
-    constructor() payable {
+    constructor() ERC721("QuizNFT", "QNFT") payable {
         _owner = msg.sender;
         _key = bytes32(Sapphire.randomBytes(32, ""));
     }
@@ -109,12 +107,12 @@ contract Quiz {
 
     // Returns true, if there is any kind of a reward for solving the quiz.
     function isReward() external view returns (bool) {
-        return _reward!=0;
+        return _reward != 0;
     }
 
     // Registers coupons eligible for solving the quiz and claiming the reward.
     function addCoupons(string[] calldata coupons) external onlyOwner {
-        for (uint i=0; i<coupons.length; i++) {
+        for (uint i = 0; i < coupons.length; i++) {
             if (_coupons[coupons[i]] == 0) {
                 _allCoupons.push(coupons[i]);
             }
@@ -130,7 +128,7 @@ contract Quiz {
     // Returns all coupons.
     function getCoupons() external view onlyOwner returns (string[] memory, uint256[] memory) {
         uint256[] memory status = new uint256[](_allCoupons.length);
-        for (uint i=0; i<_allCoupons.length; i++) {
+        for (uint i = 0; i < _allCoupons.length; i++) {
             status[i] = _coupons[_allCoupons[i]];
         }
         return (_allCoupons, status);
@@ -139,8 +137,8 @@ contract Quiz {
     // Counts still valid coupons.
     function countCoupons() external view onlyOwner returns (uint, uint) {
         uint cnt;
-        for (uint i=0; i<_allCoupons.length; i++) {
-            if (_coupons[_allCoupons[i]]==COUPON_VALID) {
+        for (uint i = 0; i < _allCoupons.length; i++) {
+            if (_coupons[_allCoupons[i]] == COUPON_VALID) {
                 cnt++;
             }
         }
@@ -151,22 +149,22 @@ contract Quiz {
     function getPermutationVector(string memory coupon) private view returns (uint8[] memory) {
         uint8[] memory pv = new uint8[](_totalChoices);
 
-        uint k=0; // Number of processed choices in total.
-        for (uint i=0; i<_questions.length; i++) {
+        uint k = 0; // Number of processed choices in total.
+        for (uint i = 0; i < _questions.length; i++) {
             bytes32 seed = keccak256(abi.encode(_key, coupon, i));
             // Enumerate choices.
-            for (uint8 j=0; j<_questions[i].choices.length; j++) {
-                pv[k+j] = j;
+            for (uint8 j = 0; j < _questions[i].choices.length; j++) {
+                pv[k + j] = j;
             }
             // Permute choices based on the seed.
-            for (uint j=0; j<_questions[i].choices.length; j++) {
-                uint8 permChoiceIdx = uint8(uint8(seed[j%seed.length])%_questions[i].choices.length);
+            for (uint j = 0; j < _questions[i].choices.length; j++) {
+                uint8 permChoiceIdx = uint8(uint8(seed[j % seed.length]) % _questions[i].choices.length);
                 // Swap permChoiceIdx with j.
-                uint8 tmp = pv[k+permChoiceIdx];
-                pv[k+permChoiceIdx] = pv[k+j];
-                pv[k+j] = tmp;
+                uint8 tmp = pv[k + permChoiceIdx];
+                pv[k + permChoiceIdx] = pv[k + j];
+                pv[k + j] = tmp;
             }
-            k+=_questions[i].choices.length;
+            k += _questions[i].choices.length;
         }
         return pv;
     }
@@ -175,15 +173,15 @@ contract Quiz {
     function getCorrectChoices(string memory coupon) private view returns (uint8[] memory) {
         uint8[] memory pv = getPermutationVector(coupon);
         uint8[] memory correctChoices = new uint8[](_questions.length);
-        uint k=0; // Number of processed choices in total.
-        for (uint i=0; i<_questions.length; i++) {
-            for (uint8 j=0;j<_questions[i].choices.length; j++) {
-                if (pv[k+j]==0) {
+        uint k = 0; // Number of processed choices in total.
+        for (uint i = 0; i < _questions.length; i++) {
+            for (uint8 j = 0; j < _questions[i].choices.length; j++) {
+                if (pv[k + j] == 0) {
                     correctChoices[i] = j;
                     break;
                 }
             }
-            k+=_questions[i].choices.length;
+            k += _questions[i].choices.length;
         }
         return correctChoices;
     }
@@ -199,14 +197,14 @@ contract Quiz {
         QuizQuestion[] memory qs = new QuizQuestion[](_questions.length);
         uint8[] memory pv = getPermutationVector(coupon);
 
-        uint k=0; // Number of processed choices in total.
-        for (uint i=0; i<_questions.length; i++) {
+        uint k = 0; // Number of processed choices in total.
+        for (uint i = 0; i < _questions.length; i++) {
             string[] memory newChoices = new string[](_questions[i].choices.length);
-            for (uint j=0; j<_questions[i].choices.length; j++) {
-                newChoices[j] = _questions[i].choices[pv[k+j]];
+            for (uint j = 0; j < _questions[i].choices.length; j++) {
+                newChoices[j] = _questions[i].choices[pv[k + j]];
             }
             qs[i] = QuizQuestion(_questions[i].question, newChoices);
-            k+=_questions[i].choices.length;
+            k += _questions[i].choices.length;
         }
 
         return qs;
@@ -230,12 +228,12 @@ contract Quiz {
         bool allCorrect = true;
         bool[] memory correctVector = new bool[](_questions.length);
         uint8[] memory questionsCorrectChoices = getCorrectChoices(coupon);
-        for (uint i=0; i< _questions.length; i++) {
-            bool answerCorrect = (questionsCorrectChoices[i]==answers[i]);
+        for (uint i = 0; i < _questions.length; i++) {
+            bool answerCorrect = (questionsCorrectChoices[i] == answers[i]);
             correctVector[i] = answerCorrect;
             allCorrect = (allCorrect && answerCorrect);
         }
-        if (!allCorrect || payoutAddr==address(0) || _reward==0) {
+        if (!allCorrect || payoutAddr == address(0) || _reward == 0) {
             return (correctVector, "");
         }
 
@@ -244,7 +242,7 @@ contract Quiz {
         bytes memory encPc = Sapphire.encrypt(_key, 0, pcEncoded, "");
 
         // If gasless mode is enabled, generate the proxy transaction.
-        if (_kp.addr!=address(0)) {
+        if (_kp.addr != address(0)) {
             bytes memory gaslessTx = EIP155Signer.sign(
                 _kp.addr,
                 _kp.secret,
@@ -280,29 +278,40 @@ contract Quiz {
 
         // Invalidate coupon.
         _coupons[pc.coupon] = block.number;
-        
-        // Mint NFT
-        OasisReward(getNft()).mint(pc.addr, _svgImage);
 
         // Increase nonce, for gasless tx.
-        if (msg.sender==_kp.addr) {
+        if (msg.sender == _kp.addr) {
             _kp.nonce++;
         }
+
+        // Mint NFT to the payout address.
+        _mintNFT(pc.addr);
     }
 
-    // Adds the IDs of the NFT contract to the Quiz contract
-    function setNft(address nftAddress) external onlyOwner
-    {
-        _quizID = uint32(block.number);
-        _svgImage = OasisReward(nftAddress).generateComplexSVG(_quizID);
-        _nftAddress = nftAddress;
+    // Function to get the total number of tokens minted
+    function totalMinted() public view returns (uint256) {
+        return _tokenIdCounter;
     }
 
-    // Function to get the deployed ERC721 contract instance
-    function getNft() public view returns (address) {
-        require(_nftAddress != address(0), "NFT contract not deployed");
-        return _nftAddress;
+    // Function to get the URI of a specific token by its ID
+    function getTokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+        return _tokenURIs[tokenId];
     }
+
+    // Internal function to mint a new token
+    function _mintNFT(address to) internal {
+        uint256 tokenId = _tokenIdCounter;
+        _tokenIdCounter++;
+        _safeMint(to, tokenId);
+        // _setTokenURI(tokenId, uri);
+    }
+
+    // // Internal function to set the token URI
+    // function _setTokenURI(uint256 tokenId, string memory uri) internal {
+    //     require(_exists(tokenId), "ERC721Metadata: URI set of nonexistent token");
+    //     _tokenURIs[tokenId] = uri;
+    // }
 
     // Reclaims contract funds to given address.
     function reclaimFunds(address addr) external onlyOwner {
@@ -310,6 +319,5 @@ contract Quiz {
         require(success, errPayoutFailed);
     }
 
-    receive() external payable {
-    }
+    receive() external payable {}
 }

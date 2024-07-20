@@ -10,13 +10,21 @@ contract OasisReward is ERC721Enumerable {
 
     // Mapping from user address to list of owned token IDs
     mapping(address => uint256[]) private _ownedTokens;
+    // Whitelisted msg.sender accounts
+    mapping(address => bool) _allowMint;
+
 
     // Contract owner
     address private _owner;
 
     
     modifier onlyOwner {
-        require(tx.origin == _owner, "Owner address not tx.origin");
+        require(msg.sender == _owner, "Only owner can call this function");
+        _;
+    }
+
+    modifier onlyAllowMint {
+        require(_allowMint[msg.sender], "Address not allowed");
         _;
     }
 
@@ -27,13 +35,22 @@ contract OasisReward is ERC721Enumerable {
         _owner = msg.sender;
     }
 
+
+    function addAllowMint(address _address) public onlyOwner {
+        _allowMint[_address] = true;
+    }
+
+    function removeAllowMin(address _address) public onlyOwner {
+        _allowMint[_address] = false;
+    }
+
     /**
      * @notice Mint new NFT reward
      * @param to address to mint the NFT to
      * @param base64EncodedSVG base64 encoded SVG image
      */
     // Function to mint new tokens
-    function mint(address to, string calldata base64EncodedSVG) public onlyOwner {
+    function mint(address to, string calldata base64EncodedSVG) public onlyAllowMint {
         require(bytes(base64EncodedSVG).length > 0, "Token URI not set");
         uint256 tokenId = totalSupply();
         _tokenURIs[tokenId] = base64EncodedSVG;
@@ -43,7 +60,7 @@ contract OasisReward is ERC721Enumerable {
 
     function generateComplexSVG(
         uint32 quizID
-    ) public view onlyOwner returns (string memory) {
+    ) public view onlyAllowMint returns (string memory) {
 
         // Use tokenId to generate some unique details for the SVG
         // For simplicity, let's change the circle's color based on the tokenId's parity
