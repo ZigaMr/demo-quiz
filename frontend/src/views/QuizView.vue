@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { type ethers } from "ethers";
+import { ethers } from "ethers";
 import { onMounted, ref } from "vue";
 
-import { useQuiz } from "../contracts";
+import { useQuiz, useNFT } from "../contracts";
 import { useEthereumStore } from "../stores/ethereum";
 import AppButton from "@/components/AppButton.vue";
 import SuccessInfo from "@/components/SuccessInfo.vue";
@@ -13,6 +13,7 @@ import QuizDetailsLoader from "@/components/QuizDetailsLoader.vue";
 const props = defineProps<{ coupon: string }>();
 
 const quiz = useQuiz();
+const nft = useNFT();
 const eth = useEthereumStore();
 
 const errors = ref<string[]>([]);
@@ -30,6 +31,7 @@ const answersChecked = ref<Boolean>(false);
 const answersCorrect = ref<Boolean>(false);
 const isReward = ref<Boolean>(false);
 const rewardClaimed = ref<Boolean>(false);
+const userImages = ref<string[]>([]);
 
 interface Questions {
   questions: Question[];
@@ -91,6 +93,20 @@ async function fetchQuestions(): Promise<void> {
   }
 }
 
+async function fetchImages(): Promise<void> {
+  try {
+    isLoading.value = true;
+    const tokens = await nft.value!.getOwnedTokens(address.value);
+    for (let i = 0; i < tokens.length; i++) {
+      userImages.value.push(await nft.value!.getTokenImage(tokens[i]));
+    }
+  } catch (e) {
+    handleError(e as Error, "Image not valid");
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 async function claimReward(e: Event): Promise<void> {
   if (e.target instanceof HTMLFormElement) {
     e.target.checkValidity();
@@ -126,6 +142,7 @@ async function claimReward(e: Event): Promise<void> {
       }
     }
   }
+  await fetchImages();
   isClaimingReward.value = false;
 }
 
@@ -267,11 +284,15 @@ onMounted(async () => {
   <section v-if="rewardClaimed">
     <SuccessInfo class="mb-20">
       <h2 class="text-white text-3xl mb-10">Your NFT:</h2>
-      <img
-        src="@/assets/images/Capture2.PNG"
-        alt="Reward Image"
-        class="mb-10"
-      />
+      <div class="grid grid-cols-3 gap-4">
+        <img
+          v-for="image in userImages"
+          :src="image"
+          :key="image"
+          alt="Reward Image"
+          class="mb-10"
+        />
+      </div>
       <h3 class="text-white text-3xl mb-10">Reward claimed!</h3>
       <p class="text-white">
         Check out our

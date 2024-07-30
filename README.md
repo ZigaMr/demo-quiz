@@ -38,11 +38,12 @@ Deploy smart contracts to that local network:
 npx hardhat deploy --network localhost
 ```
 
-The deployed Quiz address will be reported. Remember it and store it
+The deployed Quiz and OasisReward addresses will be reported. Remember it and store it
 inside the `frontend` folder's `.env.development`, for example:
 
 ```
 VITE_QUIZ_ADDR=0x385cAE1F3afFC50097Ca33f639184f00856928Ff
+VITE_NFT_ADDR=0x3C8D74Aa9b3390Af534351dB8dcF5A65FE7C9Dd2
 ```
 
 ### Deploying to Sapphire Localnet, Testnet and Mainnet
@@ -138,6 +139,16 @@ Check out other hardhat tasks that will help you manage the quiz:
 ```shell
 npx hardhat help
 ```
+### A note on tests:
+
+When running tests on sapphire-localnet
+
+```shell
+npx hardhat test --network sapphire-localnet
+```
+
+avoid setting $PRIVATE_KEY environment variable. It blocks reading default accounts from the docker localnet.
+
 
 ## Frontend
 

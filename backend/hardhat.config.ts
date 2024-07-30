@@ -10,17 +10,19 @@ import 'hardhat-watcher';
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from 'hardhat/config';
 import 'solidity-coverage';
+import { deployNFT } from './test/OasisRewards';
 
 
-async function deployContract(hre: typeof import('hardhat'), contractName: string, url: string) {
+async function deployContract(hre: typeof import('hardhat'), contractName: string, url: string, ...deployArgs: any[]) {
   const { ethers } = hre;
   const uwProvider = new JsonRpcProvider(url);
   const contractFactory = await ethers.getContractFactory(contractName, new hre.ethers.Wallet(accounts[0], uwProvider));
-  const contract = await contractFactory.deploy();
+  const contract = await contractFactory.deploy(...deployArgs);
   await contract.waitForDeployment();
   console.log(`${contractName} deployed at address: ${await contract.getAddress()}`);
   return contract;
 }
+
 
 async function addQuestions(quizContract: any, questionsFile: string) {
   const questions = JSON.parse(await fs.readFile(questionsFile, 'utf8'));
@@ -46,6 +48,24 @@ async function setReward(hre: typeof import('hardhat'), quizContract: any, rewar
   const tx = await quizContract.setReward(ethers.parseEther(reward));
   const receipt = await tx.wait();
   console.log(`Set reward to ${reward} ROSE. Transaction hash: ${receipt!.hash}`);
+}
+
+async function addAllowMint(hre: typeof import('hardhat'), contract: any, address: string) {
+  const tx = await contract.addAllowMint(address);
+  await tx.wait();
+  console.log(`Address ${address} allowed to mint.`);
+}
+
+async function setNft(hre: typeof import('hardhat'), contract: any, nftAddress: string) {
+  const tx = await contract.setNft(nftAddress);
+  await tx.wait();
+  console.log(`NFT address set to ${nftAddress}.`);
+}
+
+async function setCustomNFT(hre: typeof import('hardhat'), contract: any, nftAddress: string, nftId: number, svgImage: string) {
+  const tx = await contract.setCustomNFT(nftAddress, nftId, svgImage, { gasLimit: 15_000_000 });
+  await tx.wait();
+  console.log(`NFT address set to ${nftAddress}.`);
 }
 
 async function fundContract(hre: typeof import('hardhat'), quizContract: any, amount: string) {
@@ -108,11 +128,7 @@ task('deployOasisReward')
     await hre.run('compile');
 
     // For deployment unwrap the provider to enable contract verification.
-    const uwProvider = new JsonRpcProvider(hre.network.config.url);
-    const OasisReward = await hre.ethers.getContractFactory('OasisReward', new hre.ethers.Wallet(accounts[0], uwProvider));
-    const oasisReward = await OasisReward.deploy(args.name, args.symbol);
-    await oasisReward.waitForDeployment();
-
+    const oasisReward = await deployContract(hre, 'OasisReward', hre.network.config.url);
     console.log(`OasisReward address: ${await oasisReward.getAddress()}`);
     return oasisReward;
 });
@@ -326,16 +342,25 @@ task('deployAndSetupQuiz')
   .addOptionalParam('reward', 'Reward in ROSE', '2.0')
   .addOptionalParam('gaslessAddress', 'Payer address for gasless transactions')
   .addOptionalParam('gaslessSecret', 'Payer secret key for gasless transactions')
-  .addOptionalParam('fundAmount', 'Amount in ROSE to fund the contract', '100')
+  .addOptionalParam('fundAmount', 'Amount in ROSE to fund the contract', '5')
   .addOptionalParam('fundGaslessAmount', 'Amount in ROSE to fund the gasless account', '10')
   .addOptionalParam('contractAddress', 'Contract address for status check')
   .setAction(async (args, hre) => {
     await hre.run('compile');
     const quiz = await deployContract(hre, 'Quiz', hre.network.config.url);
+    const oasisReward = await deployContract(hre, 'OasisReward', hre.network.config.url, 'OasisReward', 'OR');
     await addQuestions(quiz, args.questionsFile);
     await addCoupons(quiz, args.couponsFile);
     await setReward(hre, quiz, args.reward);
     await fundContract(hre, quiz, args.fundAmount);
+    await addAllowMint(hre, oasisReward, await quiz.getAddress());
+    await addAllowMint(hre, oasisReward, args.gaslessAddress);
+    // await setNft(hre, quiz, await oasisReward.getAddress());
+    const svgData = await fs.readFile('../frontend/src/assets/images/oasis-network-blockchain-logo.svg', 'utf8');
+    const match = svgData.match(/<svg.*?>.*?<\/svg>/s);
+    const svgTag = match ? match[0] : '';
+    console.log("Setting custom NFT with SVG tag: "); //, svgTag);
+    await setCustomNFT(hre, quiz, await oasisReward.getAddress(), 10, svgTag);
     const nonce = await hre.ethers.provider.getTransactionCount(args.gaslessAddress);
     if (!args.gaslessAddress || !args.gaslessSecret) {
       console.log('Provide --gasless-address and --gasless-secret to set gasless keypair.');

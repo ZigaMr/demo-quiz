@@ -376,7 +376,7 @@ describe("Quiz", function () {
     )[0].sendTransaction({
       from: (await ethers.getSigners())[0],
       to: ethers.getAddress("0xDce075E1C39b1ae0b75D554558b6451A226ffe00"),
-      value: ethers.parseEther("1.00"),
+      value: ethers.parseEther("10.00"),
     });
     const fundingReceipt = await transaction.wait();
     expect(fundingReceipt).to.not.equal(null);
