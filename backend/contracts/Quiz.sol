@@ -8,7 +8,7 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 
 /**
  * @title Quiz
- * @notice A contract that allows creating quizzes with questions and answers. 
+ * @notice A contract that allows creating quizzes with questions and answers.
  * Generates NFT rewards for correctly solving the quiz.
  */
 contract Quiz {
@@ -81,8 +81,7 @@ contract Quiz {
     }
 
     modifier validCoupon(string memory coupon) {
-        if (_coupons[coupon] != COUPON_VALID)
-        {
+        if (_coupons[coupon] != COUPON_VALID) {
             revert InvalidCoupon(coupon);
         }
         _;
@@ -94,8 +93,9 @@ contract Quiz {
     }
 
     /**
-     * @title addQuestion
      * @notice Adds a new question to the quiz.
+     * @param question Question to add.
+     * @param choices List of possible answers. The first answer is always the correct one.
      */
     function addQuestion(
         string memory question,
@@ -106,7 +106,6 @@ contract Quiz {
     }
 
     /**
-     * @title clearQuestions
      * @notice Clears all questions from the quiz.
      */
     function clearQuestions() external onlyOwner {
@@ -115,8 +114,10 @@ contract Quiz {
     }
 
     /**
-     * @title setQuestion
      * @notice Sets the question at the given index.
+     * @param questionIndex Index of the question to set.
+     * @param question New question.
+     * @param choices New choices.
      */
     function setQuestion(
         uint256 questionIndex,
@@ -129,7 +130,6 @@ contract Quiz {
     }
 
     /**
-     * @setReward
      * @notice Sets the native token reward amount for solving the quiz.
      */
     function setReward(uint256 reward) external onlyOwner {
@@ -137,7 +137,6 @@ contract Quiz {
     }
 
     /**
-     * @getReward
      * @notice Returns the native token reward amount for solving the quiz.
      */
     function getReward() external view onlyOwner returns (uint256) {
@@ -145,7 +144,6 @@ contract Quiz {
     }
 
     /**
-     * @isReward
      * @notice Returns true if the quiz has a reward.
      */
     function isReward() external view returns (bool) {
@@ -153,8 +151,8 @@ contract Quiz {
     }
 
     /**
-     * @title addCoupons
      * @notice Adds new coupons to the quiz.
+     * @param coupons Coupons to add.
      */
     function addCoupons(string[] calldata coupons) external onlyOwner {
         for (uint256 i = 0; i < coupons.length; i++) {
@@ -166,15 +164,14 @@ contract Quiz {
     }
 
     /**
-     * @title removeCoupon
      * @notice Removes a coupon from the quiz.
+     * @param coupon Coupon to remove.
      */
     function removeCoupon(string memory coupon) external onlyOwner {
         _coupons[coupon] = COUPON_REMOVED;
     }
 
     /**
-     * @title getCoupons
      * @notice Returns all coupons and their status.
      */
     function getCoupons()
@@ -191,7 +188,6 @@ contract Quiz {
     }
 
     /**
-     * @title countCoupons
      * @notice Returns the number of valid coupons.
      */
     function countCoupons() external view onlyOwner returns (uint256, uint256) {
@@ -205,8 +201,8 @@ contract Quiz {
     }
 
     /**
-     * @title getPermutationVector
      * @notice Generates a permutation vector for the given coupon.
+     * @param coupon Coupon to generate the permutation vector for.
      */
     function getPermutationVector(
         string memory coupon
@@ -236,8 +232,8 @@ contract Quiz {
     }
 
     /**
-        * @title getCorrectChoices
-        * @notice Returns the correct choices for the given coupon.
+     * @notice Returns the correct choices for the given coupon.
+     * @param coupon Coupon to fetch the correct choices for.
      */
     function getCorrectChoices(
         string memory coupon
@@ -258,8 +254,8 @@ contract Quiz {
     }
 
     /**
-     * @title getQuestions
      * @notice Returns the questions for the given coupon.
+     * @param coupon Coupon to fetch the questions for.
      */
     function getQuestions(
         string memory coupon
@@ -289,8 +285,10 @@ contract Quiz {
     }
 
     /**
-     * @title setGaslessKeyPair
      * @notice Enable gasless mode by using the provided keypair.
+     * @param addr Address of the gasless account.
+     * @param secretKey Secret key of the gasless account.
+     * @param nonce Nonce of the gasless account.
      */
     function setGaslessKeyPair(
         address addr,
@@ -300,7 +298,9 @@ contract Quiz {
         _kp = EthereumKeypair(addr, secretKey, nonce);
     }
 
-    // Returns the gasless keypair of the account that pays for the gas.
+    /**
+     * @notice Returns the gasless keypair of the account that pays for the gas.
+     */
     function getGaslessKeyPair()
         external
         view
@@ -309,9 +309,14 @@ contract Quiz {
         return (_kp.addr, _kp.secret, _kp.nonce);
     }
 
-    // Check provided answers and return the array of correct submissions.
-    // If all the answers are correct and the payout address is provided, returns a payout certificate that can be used to claim the reward.
-    // Generates gasless transaction, if gasless keypair is set.
+    /**
+     * @notice Checks the provided answers and returns the array of correct submissions.
+     * If all the answers are correct and the payout address is provided, returns a payout certificate that can be used to claim the reward.
+     * Generates gasless transaction, if gasless keypair is set.
+     * @param coupon Coupon to check the answers for.
+     * @param answers Answers to check.
+     * @param payoutAddr Address to send the reward to.
+     */
     function checkAnswers(
         string memory coupon,
         uint8[] memory answers,
@@ -364,8 +369,8 @@ contract Quiz {
     }
 
     /**
-     * @title claimReward
      * @notice Claims the reward for the given payout certificate.
+     * @param encPayoutCertificate Encrypted payout certificate.
      */
     function claimReward(bytes memory encPayoutCertificate) external {
         // Decrypt, decode.
@@ -408,8 +413,9 @@ contract Quiz {
     }
 
     /**
-     * @title setPayoutFlags
      * @notice Sets the flag for making a ROSE payout and the flag for making a NFT payout
+     * @param makePayoutNative Flag for making a ROSE payout
+     * @param makePayoutNFT Flag for making a NFT payout
      */
     function setPayoutFlags(
         bool makePayoutNative,
@@ -420,8 +426,8 @@ contract Quiz {
     }
 
     /**
-     * @title setNft
      * @notice Sets the NFT contract address and generates the SVG image for the quiz.
+     * @param nftAddress NFT contract address.
      */
     function setNft(address nftAddress) external onlyOwner {
         _quizID = uint32(block.number);
@@ -430,8 +436,10 @@ contract Quiz {
     }
 
     /**
-     * @title setCustomNFT
      * @notice Sets the NFT contract address and the custom SVG image for the quiz.
+     * @param nftAddress NFT contract address.
+     * @param quizID Unique identifier for the quiz contract.
+     * @param svgImage Custom SVG image for the quiz.
      */
     function setCustomNFT(
         address nftAddress,
@@ -450,7 +458,6 @@ contract Quiz {
     }
 
     /**
-     * @title getNft
      * @notice Returns the NFT contract address.
      */
     function getNft() public view returns (address) {
@@ -461,8 +468,8 @@ contract Quiz {
     }
 
     /**
-     * @title reclaimFunds
      * @notice Reclaims the funds from the contract.
+     * @param addr Address to send the funds to.
      */
     function reclaimFunds(address addr) external onlyOwner {
         (bool success, ) = addr.call{value: address(this).balance}("");
