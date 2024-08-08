@@ -10,18 +10,18 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
  * Contains functions to mint new NFTs, generate SVG images, and retrieve token data.
  */
 contract OasisReward is ERC721Enumerable {
-    /// Mapping from token ID to SVG image URI
+    // Mapping from token ID to SVG image URI
     mapping(uint256 => string) private _tokenURIs;
 
-    /// Mapping from user address to list of owned token IDs
+    // Mapping from user address to list of owned token IDs
     mapping(address => uint256[]) private _ownedTokens;
-    /// Whitelisted msg.sender accounts
+    // Whitelisted msg.sender accounts
     mapping(address => bool) private _allowMint;
 
-    /// Contract owner
+    // Contract owner
     address private _owner;
 
-    /// Errors
+    // Errors
     error OnlyOwnerCanCallFunction(address caller);
     error AddressNotAllowed(address caller);
     error IncorrectImageError(string base64Encoded);
@@ -59,7 +59,6 @@ contract OasisReward is ERC721Enumerable {
      * @param to address to mint the NFT to
      * @param base64EncodedSVG base64 encoded SVG image
      */
-    /// Function to mint new tokens
     function mint(
         address to,
         string calldata base64EncodedSVG
@@ -70,7 +69,7 @@ contract OasisReward is ERC721Enumerable {
         uint256 tokenId = totalSupply();
         _tokenURIs[tokenId] = base64EncodedSVG;
         _safeMint(to, tokenId);
-        /// Add the tokenId to the list of owned tokens for the address 'to'
+        // Add the tokenId to the list of owned tokens for the address 'to'
         _ownedTokens[to].push(tokenId);
     }
 
@@ -81,11 +80,11 @@ contract OasisReward is ERC721Enumerable {
     function generateComplexSVG(
         uint32 quizID
     ) public view onlyAllowMint returns (string memory) {
-        /// Use tokenId to generate a simple circle SVG image
-        /// For simplicity, let's change the circle's color based on the tokenId's parity
+        // Use tokenId to generate a simple circle SVG image
+        // For simplicity, let's change the circle's color based on the tokenId's parity
         string memory circleColor = quizID % 2 == 0 ? "blue" : "red";
 
-        /// SVG parts concatenated with dynamic data
+        // SVG parts concatenated with dynamic data
         string memory svg = string(
             abi.encodePacked(
                 ""
@@ -98,10 +97,10 @@ contract OasisReward is ERC721Enumerable {
             )
         );
 
-        /// Encode the entire SVG string to Base64
+        // Encode the entire SVG string to Base64
         string memory base64EncodedSVG = Base64.encode(bytes(svg));
 
-        /// Return the data URI for the SVG image
+        // Return the data URI for the SVG image
         return
             string(
                 abi.encodePacked("data:image/svg+xml;base64,", base64EncodedSVG)
@@ -112,9 +111,9 @@ contract OasisReward is ERC721Enumerable {
      * @notice Returns the SVG base64 encoded string for a tokenID
      * @param tokenId unique identifier for the token
      */
-    function getTokenImage(
+    function tokenURI(
         uint256 tokenId
-    ) public view virtual returns (string memory) {
+    ) public view virtual override returns (string memory) {
         if (!_exists(tokenId)) {
             revert TokenNotExistError(tokenId);
         }

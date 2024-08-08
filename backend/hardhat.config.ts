@@ -202,7 +202,7 @@ task('status')
     const quiz = await hre.ethers.getContractAt('Quiz', args.address);
 
     // Questions.
-    const questions = await quiz.getQuestions("");
+    const questions = await quiz.getQuestions("testCoupon1");
     console.log(`Questions (counting from 0):`);
     for (let i=0; i<questions.length; i++) {
       console.log(`  ${i}. ${questions[i].question}`);
@@ -335,16 +335,17 @@ task('setGaslessKeyPair')
   });
 
 
-// Deploy and setup Quiz contract.
-task('deployAndSetupQuiz')
+// Deploy and setup Quiz contract for NFT reward with normal transactions.
+task('deployAndSetupQuizNormal')
   .addOptionalParam('questionsFile', 'File containing questions in JSON format', 'test-questions.json')
   .addOptionalParam('couponsFile', 'File containing coupons, one per line', 'test-coupons.txt')
-  .addOptionalParam('reward', 'Reward in ROSE', '2.0')
+  .addOptionalParam('reward', 'Reward in ROSE', '1.0')
   .addOptionalParam('gaslessAddress', 'Payer address for gasless transactions')
   .addOptionalParam('gaslessSecret', 'Payer secret key for gasless transactions')
-  .addOptionalParam('fundAmount', 'Amount in ROSE to fund the contract', '5')
+  .addOptionalParam('fundAmount', 'Amount in ROSE to fund the contract', '10')
   .addOptionalParam('fundGaslessAmount', 'Amount in ROSE to fund the gasless account', '10')
   .addOptionalParam('contractAddress', 'Contract address for status check')
+  .addOptionalParam('userAddress', 'Fund user address when balance below 5 ROSE')
   .setAction(async (args, hre) => {
     await hre.run('compile');
     const quiz = await deployContract(hre, 'Quiz', hre.network.config.url);
@@ -366,7 +367,54 @@ task('deployAndSetupQuiz')
       console.log('Provide --gasless-address and --gasless-secret to set gasless keypair.');
       return
     }
+    // await setGaslessKeyPair(quiz, args.gaslessAddress, args.gaslessSecret, nonce);
+    if (await hre.ethers.provider.getBalance(args.userAddress) < hre.ethers.parseEther('5')) {
+      await fundGaslessAccount(hre, args.userAddress, '5');
+    }
+    // await fundGaslessAccount(hre, args.gaslessAddress, args.fundGaslessAmount);
+    if (args.contractAddress) {
+      await hre.run('status', { address: args.contractAddress });
+    } else {
+      await hre.run('status', { address: await quiz.getAddress() });
+    }
+  });
+
+// Deploy and setup Quiz contract for NFT reward with gasless transactions.
+task('deployAndSetupQuizGasless')
+  .addOptionalParam('questionsFile', 'File containing questions in JSON format', 'test-questions.json')
+  .addOptionalParam('couponsFile', 'File containing coupons, one per line', 'test-coupons.txt')
+  .addOptionalParam('reward', 'Reward in ROSE', '1.0')
+  .addOptionalParam('gaslessAddress', 'Payer address for gasless transactions')
+  .addOptionalParam('gaslessSecret', 'Payer secret key for gasless transactions')
+  .addOptionalParam('fundAmount', 'Amount in ROSE to fund the contract', '10')
+  .addOptionalParam('fundGaslessAmount', 'Amount in ROSE to fund the gasless account', '10')
+  .addOptionalParam('contractAddress', 'Contract address for status check')
+  .addOptionalParam('userAddress', 'Fund user address when balance below 5 ROSE', '0x')
+  .setAction(async (args, hre) => {
+    await hre.run('compile');
+    const quiz = await deployContract(hre, 'Quiz', hre.network.config.url);
+    const oasisReward = await deployContract(hre, 'OasisReward', hre.network.config.url, 'OasisReward', 'OR');
+    await addQuestions(quiz, args.questionsFile);
+    await addCoupons(quiz, args.couponsFile);
+    await setReward(hre, quiz, args.reward);
+    await fundContract(hre, quiz, args.fundAmount);
+    await addAllowMint(hre, oasisReward, await quiz.getAddress());
+    await addAllowMint(hre, oasisReward, args.gaslessAddress);
+    // await setNft(hre, quiz, await oasisReward.getAddress());
+    const svgData = await fs.readFile('../frontend/src/assets/images/an-oasis-network-logo.svg', 'utf8');
+    const match = svgData.match(/<svg.*?>.*?<\/svg>/s);
+    const svgTag = match ? match[0] : '';
+    console.log("Setting custom NFT with SVG tag: "); //, svgTag);
+    await setCustomNFT(hre, quiz, await oasisReward.getAddress(), 10, svgTag);
+    const nonce = await hre.ethers.provider.getTransactionCount(args.gaslessAddress);
+    if (!args.gaslessAddress || !args.gaslessSecret) {
+      console.log('Provide --gasless-address and --gasless-secret to set gasless keypair.');
+      return
+    }
     await setGaslessKeyPair(quiz, args.gaslessAddress, args.gaslessSecret, nonce);
+    if (args.userAddress != '0x' && await hre.ethers.provider.getBalance(args.userAddress) < hre.ethers.parseEther('5')) {
+      await fundGaslessAccount(hre, args.userAddress, '5');
+    }
     await fundGaslessAccount(hre, args.gaslessAddress, args.fundGaslessAmount);
     if (args.contractAddress) {
       await hre.run('status', { address: args.contractAddress });

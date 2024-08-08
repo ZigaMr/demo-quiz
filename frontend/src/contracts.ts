@@ -11,8 +11,10 @@ export type { OasisReward } from "@oasisprotocol/demo-quiz-backend";
 
 import { useEthereumStore } from "./stores/ethereum";
 
-const addr = import.meta.env.VITE_QUIZ_ADDR!;
-const addrNFT = import.meta.env.VITE_NFT_ADDR!;
+export const addr = import.meta.env.VITE_QUIZ_ADDR!;
+export const addrNFT = import.meta.env.VITE_NFT_ADDR!;
+
+// export const nftAddress = computed(() => import.meta.env.VITE_NFT_ADDR);
 
 export function useQuiz(): ComputedRef<Quiz | null> {
   const eth = useEthereumStore();
