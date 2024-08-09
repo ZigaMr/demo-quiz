@@ -438,15 +438,12 @@ contract Quiz {
     /**
      * @notice Sets the NFT contract address and the custom SVG image for the quiz.
      * @param nftAddress NFT contract address.
-     * @param quizID Unique identifier for the quiz contract.
      * @param svgImage Custom SVG image for the quiz.
      */
     function setCustomNFT(
         address nftAddress,
-        uint32 quizID,
         string calldata svgImage
     ) external onlyOwner {
-        _quizID = quizID;
         _nftAddress = nftAddress;
 
         // Encode the entire SVG string to Base64

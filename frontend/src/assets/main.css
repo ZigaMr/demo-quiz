@@ -69,4 +69,14 @@ fieldset button {
     background-color: #f0f0f0; /* Set the desired background color */
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     border: 3px solid gold;
-}
+    animation: spin 1s ease-in-out;
+    }
+    
+    @keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+    }
