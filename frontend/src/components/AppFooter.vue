@@ -5,7 +5,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <footer class="text-xs w-full absolute bottom-5 px-8">
+  <footer class="text-xs w-full py-5 px-8 mt-auto">
     <p
       class="text-white text-center"
       v-html="t('copyright', { year: currentYear })"

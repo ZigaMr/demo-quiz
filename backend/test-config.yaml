@@ -2,10 +2,10 @@
 
 questionsFile: "test-questions.json"                                                  # File containing questions in JSON format
 couponsFile: "test-coupons.txt"                                                       # File containing coupons, one per line
-nativeReward: "2.0"                                                                   # Reward in ROSE (optional)
-gaslessSecret: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"   # Gasless account private key (optional)
-fundGaslessAmount: "10"                                                               # Amount of ROSE to send to gasless account (optional)
-fundAmount: "5"                                                                       # Amount in ROSE to fund the contract (optional)
+nativeReward: "200.0"                                                                   # Reward in ROSE (optional)
+gaslessSecret: "<Gassless Account Address>"   # Gasless account private key (optional)
+fundGaslessAmount: "100"                                                               # Amount of ROSE to send to gasless account (optional)
+fundAmount: "40000"                                                                       # Amount in ROSE to fund the contract (optional)
 nftReward:                                                                            # NFT reward (optional)
   address: ""                                                                         # Address of the existing NFT contract (if exists)
   metadataFile: "test/assets/metadata_inline.json"                                    # Metadata File
